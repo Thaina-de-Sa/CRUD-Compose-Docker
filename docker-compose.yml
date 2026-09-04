@@ -1,0 +1,58 @@
+services:
+  php: # Serviço que executa a aplicação PHP
+    image: php:8.3-apache # Imagem oficial do PHP com Apache já configurado
+    container_name: php # Nome fixo do container da aplicação
+    ports:
+      - "8080:80" # Mapeia a porta 80 do container para a 8080 do host (acesso via navegador)
+    environment: # Variáveis usadas pelo código PHP para se conectar ao banco
+      DB_HOST: mysql # Nome do serviço do banco, resolvido pela rede interna
+      DB_USER: app # Usuário do banco definido no serviço mysql
+      DB_PASSWORD: app # Senha do usuário app
+      DB_NAME: app # Nome do banco de dados usado pela aplicação
+    volumes:
+      - ./src2:/var/www/html # Monta o código local dentro do container, refletindo mudanças em tempo real
+    depends_on:
+      - mysql # Garante que o container mysql suba antes do php
+    networks:
+      - minha-rede # Conecta este container à rede personalizada
+    command: >
+      bash -c "docker-php-ext-install mysqli pdo pdo_mysql &&
+               apache2-foreground"
+      # Instala as extensões de MySQL necessárias e inicia o Apache
+
+  mysql: # Serviço do banco de dados
+    image: mysql:8.4 # Imagem oficial do MySQL
+    container_name: mysql # Nome fixo do container do banco
+    restart: unless-stopped # Reinicia o container automaticamente caso ele pare
+    environment:
+      MYSQL_ROOT_PASSWORD: root9 # Senha do usuário root do MySQL
+      MYSQL_DATABASE: app # Banco de dados criado automaticamente na primeira execução
+      MYSQL_USER: app # Usuário de aplicação criado automaticamente
+      MYSQL_PASSWORD: app # Senha do usuário de aplicação
+    ports:
+      - "3306:3306" # Expõe a porta do MySQL no host (útil para acesso externo, ex.: DBeaver)
+    volumes:
+      - mysql_data:/var/lib/mysql # Volume persistente, evita perda de dados ao reiniciar o container
+    networks:
+      - minha-rede # Conecta este container à rede personalizada
+
+  phpmyadmin: # Interface web para administrar o banco visualmente
+    image: phpmyadmin:latest # Imagem oficial do phpMyAdmin
+    container_name: phpmyadmin # Nome fixo do container
+    restart: unless-stopped # Reinicia automaticamente caso pare
+    ports:
+      - "8081:80" # Acesso ao phpMyAdmin pela porta 8081 do host
+    environment:
+      PMA_HOST: mysql # Nome do serviço do banco ao qual o phpMyAdmin deve se conectar
+      PMA_PORT: 3306 # Porta do banco de dados
+    depends_on:
+      - mysql # Garante que o mysql suba antes do phpmyadmin
+    networks:
+      - minha-rede # Conecta este container à rede personalizada
+
+volumes:
+  mysql_data: # Define o volume nomeado usado para persistir os dados do MySQL
+
+networks:
+  minha-rede: # Define a rede personalizada
+    driver: bridge # Tipo bridge, permite que os containers se comuniquem pelo nome do serviço
